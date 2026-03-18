@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>emo robot dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+/* ════════════════════════════════════════════════
+   ROOT + RESET
+════════════════════════════════════════════════ */
+:root {
+  --bg:       #070810;
+  --bg2:      #0d0e1a;
+  --bg3:      #12131f;
+  --border:   #1e2035;
+  --border2:  #272840;
+  --green:    #00ff88;
+  --green2:   #00cc66;
+  --green-bg: rgba(0,255,136,.07);
+  --cyan:     #00d4ff;
+  --red:      #ff4060;
+  --yellow:   #ffd600;
+  --purple:   #9d6fff;
+  --text:     #c8d0e7;
+  --text2:    #7a82a0;
+  --text3:    #3a3d55;
+  --mono:     'DM Mono', monospace;
+  --display:  'Bebas Neue', sans-serif;
+  --r:        8px;
+}
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* scanlines */
+body::before {
+  content:'';
+  position:fixed;inset:0;z-index:1000;pointer-events:none;
+  background: repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.1) 3px,rgba(0,0,0,.1) 4px);
+}
+/* ambient glow */
+body::after {
+  content:'';
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 60% 40% at 10% 10%, rgba(0,255,136,.04) 0%,transparent 100%),
+    radial-gradient(ellipse 50% 40% at 90% 90%, rgba(0,212,255,.04) 0%,transparent 100%);
+}
+
+/* ════════════════════════════════════════════════
+   LAYOUT
+════════════════════════════════════════════════ */
+.shell {
+  position:relative;z-index:1;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  grid-template-rows: auto 1fr;
+  gap: 12px;
+  min-height: 100vh;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  grid-column: 1/-1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+}
+.topbar-left { display:flex; align-items:center; gap:14px; }
+.logo {
+  font-family: var(--display);
+  font-size: 28px;
+  letter-spacing: 3px;
+  color: var(--green);
+  line-height: 1;
+}
+.logo span { color: var(--text2); font-size: 13px; font-family: var(--mono); letter-spacing:1px; display:block; margin-top:-2px; }
+.ws-badge {
+  display:flex;align-items:center;gap:6px;
+  padding:5px 10px;
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--text2);
+}
+.ws-dot {
+  width:7px;height:7px;border-radius:50%;
+  background:var(--text3);
+  transition:background .3s, box-shadow .3s;
+}
+.ws-dot.connected { background:var(--green); box-shadow:0 0 6px var(--green); animation:pulse-dot 2s infinite; }
+.ws-dot.error     { background:var(--red); }
+@keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+.topbar-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.ip-form { display:flex; gap:6px; align-items:center; }
+.ip-form input {
+  background:#000;
+  border:1px solid var(--border2);
+  border-radius:4px;
+  color:var(--cyan);
+  font-family:var(--mono);
+  font-size:12px;
+  padding:6px 10px;
+  width:150px;
+  outline:none;
+  transition:border-color .2s;
+}
+.ip-form input:focus { border-color:var(--green); }
+.ip-form input::placeholder { color:var(--text3); }
+.btn-sm {
+  padding:6px 12px;
+  background:#000;
+  border:1px solid var(--green);
+  border-radius:4px;
+  color:var(--green);
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:1px;
+  cursor:pointer;
+  transition:background .15s, box-shadow .15s;
+  white-space:nowrap;
+}
+.btn-sm:hover { background:var(--green-bg); box-shadow:0 0 10px rgba(0,255,136,.2); }
+.time-display {
+  font-family:var(--display);
+  font-size:26px;
+  color:var(--text);
+  letter-spacing:2px;
+  min-width:80px;
+  text-align:right;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  display:flex;flex-direction:column;gap:10px;
+}
+
+/* ── MAIN ── */
+.main {
+  display:flex;flex-direction:column;gap:10px;
+}
+
+/* ════════════════════════════════════════════════
+   CARDS
+════════════════════════════════════════════════ */
+.card {
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:16px;
+  display:flex;flex-direction:column;gap:12px;
+}
+.card-title {
+  font-size:9px;
+  letter-spacing:3px;
+  color:var(--text2);
+  text-transform:uppercase;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.card-title .badge {
+  background:var(--green-bg);
+  border:1px solid rgba(0,255,136,.2);
+  color:var(--green);
+  padding:2px 7px;
+  border-radius:3px;
+  font-size:9px;
+  letter-spacing:1px;
+}
+.card-title .badge.red { background:rgba(255,64,96,.07); border-color:rgba(255,64,96,.2); color:var(--red); }
+.card-title .badge.yellow { background:rgba(255,214,0,.07); border-color:rgba(255,214,0,.2); color:var(--yellow); }
+
+/* ── EMO FACE card ── */
+.face-card {
+  align-items:center;
+  gap:16px;
+}
+.oled-sim {
+  width:100%;
+  aspect-ratio:2/1;
+  background:#000;
+  border:1px solid var(--green);
+  border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  position:relative;
+  overflow:hidden;
+  box-shadow:0 0 20px rgba(0,255,136,.1), inset 0 0 30px rgba(0,0,0,.5);
+}
+.oled-sim::after {
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,136,.03) 2px,rgba(0,255,136,.03) 3px);
+  pointer-events:none;
+}
+.eye-pair { display:flex; gap:16px; align-items:center; }
+.oled-eye {
+  width:36px;height:36px;
+  background:var(--green);
+  border-radius:5px;
+  box-shadow:0 0 10px rgba(0,255,136,.8);
+  animation:eblink 5s infinite;
+  transition:all .3s;
+  position:relative;
+  flex-shrink:0;
+}
+.oled-eye.sad    { clip-path:inset(40% 0 0 0 round 4px); animation:none; }
+.oled-eye.happy::after  { content:'';position:absolute;bottom:-2px;left:-1px;right:-1px;height:50%;background:#000;border-radius:0 0 3px 3px; }
+.oled-eye.angry::before { content:'';position:absolute;top:0;left:0;right:0;height:35%;background:#000;clip-path:polygon(0 0,100% 0,100% 100%,0 0); }
+.oled-eye.love  { background:var(--red);clip-path:polygon(50% 85%,0% 35%,15% 15%,35% 20%,50% 35%,65% 20%,85% 15%,100% 35%);box-shadow:0 0 10px rgba(255,64,96,.8);animation:elov 1s infinite; }
+.oled-eye.excited { clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);animation:espin 2s linear infinite; }
+.oled-eye.surprised { border:3px solid var(--green);background:transparent;border-radius:50%;animation:none;box-shadow:0 0 10px rgba(0,255,136,.5); }
+.oled-eye.sleepy { clip-path:inset(25% 0 25% 0 round 4px);animation:none; }
+.oled-eye.curious { border-radius:5px 5px 50% 50%; }
+.oled-eye.scared { border:3px solid var(--green);background:var(--green);border-radius:50%;animation:eshake .2s infinite; }
+@keyframes eblink  { 0%,88%,100%{transform:scaleY(1)}93%{transform:scaleY(.05)} }
+@keyframes elov    { 0%,100%{transform:scale(1)}50%{transform:scale(1.1)} }
+@keyframes espin   { to{transform:rotate(360deg)} }
+@keyframes eshake  { 0%,100%{transform:translateX(0)}50%{transform:translateX(2px)} }
+
+.mood-grid {
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:5px;
+}
+.mood-btn {
+  padding:7px 4px;
+  background:#000;
+  border:1px solid var(--border2);
+  border-radius:4px;
+  color:var(--text2);
+  font-family:var(--mono);
+  font-size:9px;
+  letter-spacing:.5px;
+  cursor:pointer;
+  text-align:center;
+  transition:all .15s;
+}
+.mood-btn:hover { border-color:var(--green); color:var(--green); background:var(--green-bg); }
+.mood-btn.active { border-color:var(--green); color:var(--green); background:var(--green-bg); }
+
+/* ── MUSIC card ── */
+.music-meta { display:flex;flex-direction:column;gap:3px; }
+.music-title  { font-size:15px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.music-artist { font-size:11px;color:var(--text2); }
+.progress-wrap { display:flex;flex-direction:column;gap:4px; }
+.progress-bar {
+  height:3px;background:var(--border2);border-radius:2px;overflow:hidden;cursor:pointer;
+}
+.progress-fill { height:100%;background:var(--green);border-radius:2px;transition:width .8s linear;width:0%; }
+.progress-time { display:flex;justify-content:space-between;font-size:9px;color:var(--text3); }
+.song-grid {
+  display:grid;grid-template-columns:repeat(2,1fr);gap:5px;
+}
+.song-btn {
+  padding:6px 8px;background:#000;border:1px solid var(--border2);border-radius:4px;
+  color:var(--text2);font-family:var(--mono);font-size:9px;cursor:pointer;
+  transition:all .15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  text-align:left;
+}
+.song-btn:hover { border-color:var(--cyan);color:var(--cyan); }
+.song-btn.playing { border-color:var(--green);color:var(--green);background:var(--green-bg); }
+.vol-row { display:flex;align-items:center;gap:10px; }
+.vol-label { font-size:10px;color:var(--text2);min-width:26px; }
+.vol-slider {
+  flex:1;-webkit-appearance:none;appearance:none;
+  height:3px;background:var(--border2);border-radius:2px;outline:none;cursor:pointer;
+}
+.vol-slider::-webkit-slider-thumb {
+  -webkit-appearance:none;width:12px;height:12px;border-radius:50%;
+  background:var(--green);cursor:pointer;box-shadow:0 0 6px var(--green);
+}
+.vol-val { font-size:10px;color:var(--green);min-width:20px;text-align:right; }
+
+/* ── WEATHER card ── */
+.wx-big { font-family:var(--display);font-size:52px;color:#fff;letter-spacing:2px;line-height:1; }
+.wx-desc { font-size:11px;color:var(--text2);margin-top:2px; }
+.wx-row { display:flex;justify-content:space-between;font-size:10px;color:var(--text2); }
+.wind-bar { height:3px;background:var(--border2);border-radius:2px;overflow:hidden;margin-top:4px; }
+.wind-fill { height:100%;background:var(--cyan);border-radius:2px;transition:width .5s; }
+
+/* ── F1 card ── */
+.f1-podium { display:flex;flex-direction:column;gap:6px; }
+.f1-row {
+  display:flex;align-items:center;gap:10px;
+  padding:8px 10px;background:#000;border:1px solid var(--border2);border-radius:4px;
+}
+.f1-pos { font-family:var(--display);font-size:22px;color:var(--text3);min-width:28px; }
+.f1-row.p1 .f1-pos { color:var(--yellow); }
+.f1-row.p2 .f1-pos { color:var(--text2); }
+.f1-row.p3 .f1-pos { color:#cd7f32; }
+.f1-driver { font-size:13px;color:#fff;flex:1; }
+.f1-pts { font-size:10px;color:var(--text2);text-align:right; }
+.f1-pts span { display:block;font-size:14px;color:var(--green);font-family:var(--display);letter-spacing:1px; }
+.f1-next { font-size:10px;color:var(--text2);padding:8px 10px;background:#000;border:1px solid var(--border2);border-radius:4px; }
+.f1-next strong { color:var(--cyan); }
+
+/* ── F1 LIVE card ── */
+.f1live-main { display:flex;align-items:baseline;gap:8px; }
+.f1live-p1 { font-family:var(--display);font-size:40px;color:#fff;letter-spacing:2px; }
+.f1live-label { font-size:9px;color:var(--text2);letter-spacing:2px; }
+.f1live-gap { font-size:12px;color:var(--yellow); }
+.sc-banner {
+  background:rgba(255,214,0,.1);border:1px solid var(--yellow);border-radius:4px;
+  padding:6px 10px;font-size:11px;color:var(--yellow);letter-spacing:2px;text-align:center;
+  display:none;
+}
+.sc-banner.show { display:block; }
+.lap-row { display:flex;align-items:center;gap:10px;font-size:10px;color:var(--text2); }
+.lap-bar { flex:1;height:3px;background:var(--border2);border-radius:2px;overflow:hidden; }
+.lap-fill { height:100%;background:var(--red);border-radius:2px;transition:width .5s; }
+
+/* ── COMMAND card ── */
+.cmd-area {
+  display:grid;grid-template-columns:1fr auto;gap:6px;
+}
+.cmd-input {
+  background:#000;border:1px solid var(--border2);border-radius:4px;
+  color:var(--green);font-family:var(--mono);font-size:12px;
+  padding:8px 10px;outline:none;transition:border-color .2s;
+}
+.cmd-input:focus { border-color:var(--green); }
+.cmd-input::placeholder { color:var(--text3); }
+.cmd-send {
+  padding:8px 14px;background:#000;border:1px solid var(--green);border-radius:4px;
+  color:var(--green);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all .15s;
+}
+.cmd-send:hover { background:var(--green-bg); }
+.cmd-presets { display:flex;flex-wrap:wrap;gap:5px; }
+.cmd-preset {
+  padding:5px 9px;background:#000;border:1px solid var(--border2);border-radius:3px;
+  color:var(--text2);font-size:9px;font-family:var(--mono);cursor:pointer;transition:all .15s;letter-spacing:.5px;
+}
+.cmd-preset:hover { border-color:var(--purple);color:var(--purple); }
+
+/* ── MSG LOG ── */
+.log-box {
+  background:#000;border:1px solid var(--border);border-radius:4px;
+  padding:10px;font-size:10px;line-height:1.9;
+  height:120px;overflow-y:auto;display:flex;flex-direction:column;
+  scrollbar-width:thin;scrollbar-color:var(--border2) transparent;
+}
+.log-entry { display:flex;gap:8px; }
+.log-ts { color:var(--text3);flex-shrink:0; }
+.log-in  { color:var(--cyan); }
+.log-out { color:var(--green); }
+.log-err { color:var(--red); }
+.log-sys { color:var(--text2); }
+
+/* ── STATS row ── */
+.stats-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:8px; }
+.stat-box {
+  background:#000;border:1px solid var(--border2);border-radius:4px;
+  padding:10px;text-align:center;
+}
+.stat-num { font-family:var(--display);font-size:28px;color:var(--green);letter-spacing:1px; }
+.stat-lbl { font-size:8px;color:var(--text2);letter-spacing:2px;text-transform:uppercase;margin-top:2px; }
+
+/* ── MSG SEND ── */
+.msg-row { display:grid;grid-template-columns:1fr auto;gap:6px; }
+.msg-input {
+  background:#000;border:1px solid var(--border2);border-radius:4px;
+  color:var(--text);font-family:var(--mono);font-size:12px;
+  padding:8px 10px;outline:none;transition:border-color .2s;
+}
+.msg-input:focus { border-color:var(--cyan); }
+.msg-input::placeholder { color:var(--text3); }
+.btn-cyan {
+  padding:8px 14px;background:#000;border:1px solid var(--cyan);border-radius:4px;
+  color:var(--cyan);font-family:var(--mono);font-size:11px;cursor:pointer;transition:all .15s;
+}
+.btn-cyan:hover { background:rgba(0,212,255,.07); }
+
+/* ── PAGE SWITCHER ── */
+.page-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:5px; }
+.page-btn {
+  padding:9px 4px;background:#000;border:1px solid var(--border2);border-radius:4px;
+  color:var(--text2);font-size:9px;letter-spacing:.5px;cursor:pointer;
+  text-align:center;transition:all .15s;font-family:var(--mono);
+}
+.page-btn:hover { border-color:var(--purple);color:var(--purple); }
+.page-btn.active { border-color:var(--purple);color:var(--purple);background:rgba(157,111,255,.08); }
+
+/* ── ALARM / COUNTDOWN ── */
+.two-col { display:grid;grid-template-columns:1fr 1fr;gap:6px; }
+.time-input {
+  background:#000;border:1px solid var(--border2);border-radius:4px;
+  color:var(--cyan);font-family:var(--mono);font-size:13px;
+  padding:8px 10px;outline:none;width:100%;transition:border-color .2s;
+}
+.time-input:focus { border-color:var(--cyan); }
+.btn-full {
+  width:100%;padding:9px;background:#000;border:1px solid var(--border2);border-radius:4px;
+  color:var(--text2);font-family:var(--mono);font-size:10px;cursor:pointer;letter-spacing:1px;transition:all .15s;
+}
+.btn-full:hover { border-color:var(--green);color:var(--green);background:var(--green-bg); }
+.btn-full.red:hover { border-color:var(--red);color:var(--red);background:rgba(255,64,96,.07); }
+
+/* ════════════════════════════════════════════════
+   MOBILE  (<768px) — single column
+════════════════════════════════════════════════ */
+@media(max-width:768px){
+  .shell {
+    grid-template-columns:1fr;
+    padding:10px;gap:10px;
+  }
+  .topbar { flex-wrap:wrap;gap:10px; }
+  .topbar-right { width:100%; }
+  .ip-form { flex:1; }
+  .ip-form input { flex:1;width:auto; }
+  .time-display { display:none; }
+  .mood-grid { grid-template-columns:repeat(4,1fr); }
+  .song-grid  { grid-template-columns:repeat(2,1fr); }
+  .stats-grid { grid-template-columns:repeat(3,1fr); }
+  .page-grid  { grid-template-columns:repeat(4,1fr); }
+}
+
+/* ════════════════════════════════════════════════
+   ANIMATIONS
+════════════════════════════════════════════════ */
+.card { animation: fadeup .4s ease both; }
+.card:nth-child(1){ animation-delay:.05s }
+.card:nth-child(2){ animation-delay:.1s }
+.card:nth-child(3){ animation-delay:.15s }
+.card:nth-child(4){ animation-delay:.2s }
+.card:nth-child(5){ animation-delay:.25s }
+@keyframes fadeup {
+  from { opacity:0; transform:translateY(10px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* scrollbar */
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2);border-radius:2px; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ══ TOPBAR ══════════════════════════════════════════════ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="logo">EMO<br><span>ROBOT v10</span></div>
+      <div class="ws-badge">
+        <div class="ws-dot" id="wsDot"></div>
+        <span id="wsStatus">DISCONNECTED</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="ip-form">
+        <input type="text" id="ipInput" placeholder="192.168.1.XXX" autocomplete="off">
+        <button class="btn-sm" onclick="wsConnect()">CONNECT</button>
+      </div>
+      <div class="time-display" id="clockDisp">--:--</div>
+    </div>
+  </header>
+
+  <!-- ══ SIDEBAR ═════════════════════════════════════════════ -->
+  <aside class="sidebar">
+
+    <!-- face -->
+    <div class="card face-card">
+      <div class="card-title">OLED FACE <span id="moodBadge" class="badge">IDLE</span></div>
+      <div class="oled-sim">
+        <div class="eye-pair">
+          <div class="oled-eye" id="eyeL"></div>
+          <div class="oled-eye" id="eyeR"></div>
+        </div>
+      </div>
+      <div class="mood-grid" id="moodGrid">
+        <!-- filled by JS -->
+      </div>
+    </div>
+
+    <!-- pages -->
+    <div class="card">
+      <div class="card-title">PAGES</div>
+      <div class="page-grid" id="pageGrid">
+        <!-- filled by JS -->
+      </div>
+    </div>
+
+    <!-- volume -->
+    <div class="card">
+      <div class="card-title">VOLUME</div>
+      <div class="vol-row">
+        <span class="vol-label">VOL</span>
+        <input type="range" class="vol-slider" id="volSlider" min="0" max="10" value="7" oninput="setVol(this.value)">
+        <span class="vol-val" id="volVal">7</span>
+      </div>
+      <div class="vol-row" style="margin-top:2px">
+        <span class="vol-label">BRT</span>
+        <input type="range" class="vol-slider" id="brtSlider" min="1" max="4" value="2" oninput="setBrt(this.value)">
+        <span class="vol-val" id="brtVal">2</span>
+      </div>
+    </div>
+
+    <!-- stats -->
+    <div class="card">
+      <div class="card-title">SESSION</div>
+      <div class="stats-grid">
+        <div class="stat-box"><div class="stat-num" id="stMoods">0</div><div class="stat-lbl">MOODS</div></div>
+        <div class="stat-box"><div class="stat-num" id="stMsgs">0</div><div class="stat-lbl">MSGS</div></div>
+        <div class="stat-box"><div class="stat-num" id="stNotifs">0</div><div class="stat-lbl">NOTIFS</div></div>
+      </div>
+    </div>
+
+    <!-- sleep -->
+    <div class="card">
+      <div class="card-title">POWER</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn-full" onclick="sendCmd({t:'sleep'})">😴 SLEEP</button>
+        <button class="btn-full" onclick="sendCmd({t:'wake'})">⚡ WAKE</button>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ══ MAIN ════════════════════════════════════════════════ -->
+  <main class="main">
+
+    <!-- music -->
+    <div class="card">
+      <div class="card-title">MUSIC <span id="playBadge" class="badge red">STOPPED</span></div>
+      <div class="music-meta">
+        <div class="music-title"  id="mTitle">---</div>
+        <div class="music-artist" id="mArtist">---</div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar"><div class="progress-fill" id="mBar"></div></div>
+        <div class="progress-time"><span id="mPct">0%</span><span id="mState">–</span></div>
+      </div>
+      <div class="song-grid" id="songGrid"><!-- JS --></div>
+      <div class="vol-row">
+        <button class="btn-full" onclick="sendCmd({t:'song',name:'stop'})">⏹ STOP</button>
+      </div>
+    </div>
+
+    <!-- weather + f1 standings side by side on wide -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="midRow">
+
+      <!-- weather -->
+      <div class="card">
+        <div class="card-title">WEATHER <span class="badge" id="wxBadge">&ndash;</span>
+          <button class="btn-sm" onclick="fetchWeatherDirect()" style="font-size:9px;padding:3px 8px">&circlearrowleft; REFRESH</button>
+        </div>
+        <div id="wxLoading" style="font-size:10px;color:var(--text2)">fetching weather...</div>
+        <div id="wxBody" style="display:none;flex-direction:column;gap:8px">
+          <div class="wx-big" id="wxTemp">--&deg;</div>
+          <div class="wx-desc" id="wxDesc">---</div>
+          <div style="margin-top:4px">
+            <div class="wx-row"><span>WIND</span><span id="wxWind">-- km/h</span></div>
+            <div class="wind-bar"><div class="wind-fill" id="wxWBar" style="width:0%"></div></div>
+          </div>
+          <div class="wx-row"><span>HUMIDITY</span><span id="wxHum">--%</span></div>
+          <div class="wx-row"><span>FEELS LIKE</span><span id="wxFeel">--&deg;</span></div>
+        </div>
+        <div id="wxErr" style="font-size:10px;color:var(--red);display:none">failed to load</div>
+      </div>
+
+      <!-- f1 standings -->
+      <div class="card">
+        <div class="card-title">F1 STANDINGS <span class="badge yellow" id="f1Year">2026</span>
+          <button class="btn-sm" onclick="fetchF1Direct()" style="font-size:9px;padding:3px 8px">↻ REFRESH</button>
+        </div>
+        <div id="f1Loading" style="font-size:10px;color:var(--text2);text-align:center;padding:8px">fetching from jolpica...</div>
+        <div class="f1-podium" id="f1Podium" style="display:none">
+          <div class="f1-row p1"><div class="f1-pos">1</div><div style="flex:1"><div class="f1-driver" id="f1p1">---</div><div style="font-size:9px;color:var(--text2)" id="f1t1">---</div></div><div class="f1-pts"><span id="f1p1pts">--</span>PTS</div></div>
+          <div class="f1-row p2"><div class="f1-pos">2</div><div style="flex:1"><div class="f1-driver" id="f1p2">---</div><div style="font-size:9px;color:var(--text2)" id="f1t2">---</div></div><div class="f1-pts"><span id="f1p2pts">--</span>PTS</div></div>
+          <div class="f1-row p3"><div class="f1-pos">3</div><div style="flex:1"><div class="f1-driver" id="f1p3">---</div><div style="font-size:9px;color:var(--text2)" id="f1t3">---</div></div><div class="f1-pts"><span id="f1p3pts">--</span>PTS</div></div>
+          <div class="f1-row" style="opacity:.6"><div class="f1-pos">4</div><div style="flex:1"><div class="f1-driver" id="f1p4">---</div></div><div class="f1-pts"><span id="f1p4pts">--</span>PTS</div></div>
+          <div class="f1-row" style="opacity:.6"><div class="f1-pos">5</div><div style="flex:1"><div class="f1-driver" id="f1p5">---</div></div><div class="f1-pts"><span id="f1p5pts">--</span>PTS</div></div>
+        </div>
+        <div class="f1-next" id="f1Next" style="display:none">Next race: ---</div>
+        <div id="f1Err" style="font-size:10px;color:var(--red);display:none">failed to load — check console</div>
+      </div>
+    </div>
+
+    <!-- f1 live -->
+    <div class="card">
+      <div class="card-title">F1 LIVE
+        <span id="f1liveBadge" class="badge red">NO SESSION</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="ws-dot" id="f1wsDot"></div>
+          <span style="font-size:9px;color:var(--text2)" id="f1wsStatus">f1dash.net</span>
+        </div>
+      </div>
+      <div class="sc-banner" id="scBanner">&#9888; SAFETY CAR DEPLOYED</div>
+      <!-- top 5 live timing table -->
+      <div id="f1LiveTable" style="display:flex;flex-direction:column;gap:4px">
+        <div style="display:grid;grid-template-columns:24px 60px 1fr 70px 70px;gap:6px;font-size:9px;color:var(--text2);letter-spacing:1px;padding:0 4px">
+          <span>P</span><span>DRIVER</span><span>TEAM</span><span>GAP</span><span>INTERVAL</span>
+        </div>
+        <div id="f1LiveRows"></div>
+      </div>
+      <div class="lap-row" style="margin-top:4px">
+        <span id="f1lLapTxt" style="font-size:10px;color:var(--text2)">LAP --/--</span>
+        <div class="lap-bar"><div class="lap-fill" id="f1lLapBar" style="width:0%"></div></div>
+        <span id="f1lPct" style="font-size:10px;color:var(--red)">0%</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text2);margin-top:2px">
+        <span id="f1lSess">---</span>
+        <span id="f1lCirc">---</span>
+      </div>
+    </div>
+
+    <!-- send message + notify -->
+    <div class="card">
+      <div class="card-title">SEND MESSAGE</div>
+      <div class="msg-row">
+        <input type="text" class="msg-input" id="msgInput" placeholder="scroll this on the OLED..." maxlength="63">
+        <button class="btn-cyan" onclick="sendMsg()">SCROLL</button>
+      </div>
+      <div class="msg-row" style="margin-top:4px">
+        <input type="text" class="msg-input" id="notifyInput" placeholder="notification text..." maxlength="31">
+        <button class="btn-cyan" onclick="sendNotify()">NOTIFY</button>
+      </div>
+    </div>
+
+    <!-- alarm + countdown -->
+    <div class="card">
+      <div class="card-title">ALARM + COUNTDOWN</div>
+      <div class="two-col">
+        <div>
+          <div style="font-size:9px;color:var(--text2);letter-spacing:2px;margin-bottom:5px">ALARM TIME</div>
+          <input type="time" class="time-input" id="alarmTime" value="07:00">
+          <input type="text" class="msg-input" id="alarmLabel" placeholder="label..." style="margin-top:5px;width:100%;font-size:11px">
+          <button class="btn-full" style="margin-top:5px" onclick="setAlarm()">SET ALARM</button>
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--text2);letter-spacing:2px;margin-bottom:5px">COUNTDOWN (sec)</div>
+          <input type="number" class="time-input" id="cdSecs" value="60" min="1" max="86400">
+          <button class="btn-full" style="margin-top:5px" onclick="startCountdown()">START</button>
+          <button class="btn-full red" style="margin-top:5px" onclick="sendCmd({t:'game',v:'snake'})">🐍 SNAKE</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- raw command -->
+    <div class="card">
+      <div class="card-title">RAW COMMAND</div>
+      <div class="cmd-area">
+        <input type="text" class="cmd-input" id="cmdInput" placeholder='{"t":"ping"}' onkeydown="if(event.key==='Enter')sendRaw()">
+        <button class="cmd-send" onclick="sendRaw()">SEND</button>
+      </div>
+      <div class="cmd-presets" id="cmdPresets"><!-- JS --></div>
+      <div class="log-box" id="logBox"></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════════
+const MOODS = ['idle','happy','excited','sad','surprised','sleepy','angry','love','curious','proud','scared'];
+const MOOD_EMOJI = ['💤','😊','🤩','😢','😲','😴','😡','❤️','🤔','😤','😨'];
+const PAGES = ['EYES','CLOCK','WEATHER','F1','F1 LIVE','MUSIC','STATS','WIFI'];
+const SONGS = ['tetris','mario','imperial','nokia','birthday','pacman','pinkpanther','godfather','doom','got'];
+const PRESETS = [
+  {l:'PING',      d:{t:'ping'}},
+  {l:'HAPPY',     d:{t:'mood',v:'happy'}},
+  {l:'EXCITED',   d:{t:'mood',v:'excited'}},
+  {l:'SAD',       d:{t:'mood',v:'sad'}},
+  {l:'F1 LIVE',   d:{t:'page',v:4}},
+  {l:'CLOCK',     d:{t:'page',v:1}},
+  {l:'STATS',     d:{t:'page',v:6}},
+  {l:'SNAKE',     d:{t:'game',v:'snake'}},
+];
+
+// ═══════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════
+let ws      = null;
+let wsIP    = localStorage.getItem('emo_ip') || '';
+let curMood = 0;
+let curPage = 0;
+let curSong = -1;
+let stMoods = 0, stMsgs = 0, stNotifs = 0;
+
+// ═══════════════════════════════════════════════════════════
+//  INIT UI
+// ═══════════════════════════════════════════════════════════
+function initUI() {
+  // mood buttons
+  const mg = document.getElementById('moodGrid');
+  MOODS.forEach((m,i) => {
+    const b = document.createElement('button');
+    b.className = 'mood-btn';
+    b.id = 'mb_'+i;
+    b.textContent = MOOD_EMOJI[i]+' '+m;
+    b.onclick = () => sendCmd({t:'mood', v:m});
+    mg.appendChild(b);
+  });
+
+  // page buttons
+  const pg = document.getElementById('pageGrid');
+  PAGES.forEach((p,i) => {
+    const b = document.createElement('button');
+    b.className = 'page-btn';
+    b.id = 'pb_'+i;
+    b.textContent = p;
+    b.onclick = () => sendCmd({t:'page', v:i});
+    pg.appendChild(b);
+  });
+
+  // song buttons
+  const sg = document.getElementById('songGrid');
+  SONGS.forEach(s => {
+    const b = document.createElement('button');
+    b.className = 'song-btn';
+    b.id = 'sb_'+s;
+    b.textContent = '▶ '+s;
+    b.onclick = () => sendCmd({t:'song', name:s});
+    sg.appendChild(b);
+  });
+
+  // command presets
+  const cp = document.getElementById('cmdPresets');
+  PRESETS.forEach(p => {
+    const b = document.createElement('button');
+    b.className = 'cmd-preset';
+    b.textContent = p.l;
+    b.onclick = () => sendCmd(p.d);
+    cp.appendChild(b);
+  });
+
+  // restore IP
+  if(wsIP) {
+    document.getElementById('ipInput').value = wsIP;
+    wsConnect();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  WEBSOCKET
+// ═══════════════════════════════════════════════════════════
+function wsConnect() {
+  const ip = document.getElementById('ipInput').value.trim().replace(/^https?:\/\//,'').replace(/\/.*$/,'');
+  if(!ip) return;
+  wsIP = ip;
+  localStorage.setItem('emo_ip', ip);
+
+  if(ws) { try { ws.close(); } catch(e){} }
+
+  addLog('connecting to ws://'+ip+':81 ...', 'sys');
+  setBadge(false);
+
+  try {
+    ws = new WebSocket('ws://'+ip+':81');
+  } catch(e) {
+    addLog('failed to create WebSocket: '+e.message, 'err');
+    return;
+  }
+
+  ws.onopen = () => {
+    setBadge(true);
+    addLog('connected ✓', 'out');
+    sendCmd({t:'ping'});
+  };
+
+  ws.onclose = () => {
+    setBadge(false);
+    addLog('disconnected', 'sys');
+    // auto-reconnect after 5s
+    setTimeout(() => { if(wsIP) wsConnect(); }, 5000);
+  };
+
+  ws.onerror = () => {
+    setBadge(false, true);
+    addLog('connection error — is ESP32 on same WiFi?', 'err');
+  };
+
+  ws.onmessage = (e) => {
+    try {
+      const d = JSON.parse(e.data);
+      handleMsg(d);
+      addLog('← '+e.data, 'in');
+    } catch(ex) {
+      addLog('← '+e.data, 'in');
+    }
+  };
+}
+
+function setBadge(on, err=false) {
+  const dot = document.getElementById('wsDot');
+  const lbl = document.getElementById('wsStatus');
+  dot.className = 'ws-dot' + (on?' connected':err?' error':'');
+  lbl.textContent = on ? 'CONNECTED' : err ? 'ERROR' : 'DISCONNECTED';
+}
+
+function sendCmd(obj) {
+  const str = JSON.stringify(obj);
+  if(ws && ws.readyState===1) {
+    ws.send(str);
+    addLog('→ '+str, 'out');
+  } else {
+    addLog('not connected', 'err');
+  }
+}
+
+function sendRaw() {
+  const v = document.getElementById('cmdInput').value.trim();
+  if(!v) return;
+  try { sendCmd(JSON.parse(v)); } catch(e) { addLog('invalid JSON: '+e.message,'err'); }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  HANDLE INCOMING MESSAGES FROM ESP32
+// ═══════════════════════════════════════════════════════════
+function handleMsg(d) {
+  // pong
+  if(d.s==='pong') return;
+
+  // time
+  if(d.s==='time') {
+    const t = String(d.h).padStart(2,'0')+':'+String(d.m).padStart(2,'0');
+    document.getElementById('clockDisp').textContent = t;
+  }
+
+  // mood
+  if(d.s==='mood') {
+    curMood = d.m || 0;
+    setEyes(MOODS[curMood]);
+    document.getElementById('moodBadge').textContent = MOODS[curMood].toUpperCase();
+    document.querySelectorAll('.mood-btn').forEach((b,i) => b.classList.toggle('active', i===curMood));
+  }
+
+  // weather — just trigger a fresh browser fetch
+  if(d.s==='wx') { fetchWeatherDirect(); }
+
+  // f1 standings — ESP32 push just triggers a fresh browser-side fetch
+  if(d.s==='f1stand') { fetchF1Direct(); }
+
+  // f1 live from ESP32 (fallback — primary source is f1dash.net WS)
+  if(d.s==='f1live') {
+    document.getElementById('f1lSess').textContent = d.session || '---';
+    document.getElementById('f1lCirc').textContent = d.circuit || '---';
+    document.getElementById('scBanner').classList.toggle('show', !!d.sc);
+  }
+
+  // music
+  if(d.s==='music') {
+    document.getElementById('mTitle').textContent  = d.title  || '---';
+    document.getElementById('mArtist').textContent = d.artist || '---';
+    const pct = d.pct || 0;
+    document.getElementById('mBar').style.width    = pct+'%';
+    document.getElementById('mPct').textContent    = pct+'%';
+    document.getElementById('mState').textContent  = d.playing ? '▶ PLAYING' : '⏸ PAUSED';
+    document.getElementById('playBadge').textContent  = d.playing ? 'PLAYING' : 'PAUSED';
+    document.getElementById('playBadge').className    = 'badge '+(d.playing?'':'red');
+  }
+
+  // sleep / wake
+  if(d.s==='sleep') setEyes('sleepy');
+  if(d.s==='wake')  setEyes('');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EYE RENDERER
+// ═══════════════════════════════════════════════════════════
+function setEyes(mood) {
+  const eL = document.getElementById('eyeL');
+  const eR = document.getElementById('eyeR');
+  eL.className = 'oled-eye'; eR.className = 'oled-eye';
+  if(mood && mood!=='idle') { eL.classList.add(mood); eR.classList.add(mood); }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CONTROLS
+// ═══════════════════════════════════════════════════════════
+function setVol(v) {
+  document.getElementById('volVal').textContent = v;
+  sendCmd({t:'volume', v:parseInt(v)});
+}
+function setBrt(v) {
+  document.getElementById('brtVal').textContent = v;
+  sendCmd({t:'brightness', v:parseInt(v)});
+}
+function sendMsg() {
+  const txt = document.getElementById('msgInput').value.trim();
+  if(!txt) return;
+  sendCmd({t:'msg', text:txt});
+  stMsgs++;
+  document.getElementById('stMsgs').textContent = stMsgs;
+  document.getElementById('msgInput').value = '';
+}
+function sendNotify() {
+  const txt = document.getElementById('notifyInput').value.trim();
+  if(!txt) return;
+  sendCmd({t:'notify', text:txt, icon:'info'});
+  stNotifs++;
+  document.getElementById('stNotifs').textContent = stNotifs;
+  document.getElementById('notifyInput').value = '';
+}
+function setAlarm() {
+  const t = document.getElementById('alarmTime').value;
+  const lbl = document.getElementById('alarmLabel').value.trim() || 'ALARM';
+  if(!t) return;
+  const [h,m] = t.split(':').map(Number);
+  sendCmd({t:'alarm', h, m, label:lbl});
+}
+function startCountdown() {
+  const s = parseInt(document.getElementById('cdSecs').value) || 60;
+  sendCmd({t:'countdown', seconds:s});
+}
+
+// msg input enter key
+document.getElementById('msgInput').addEventListener('keydown', e => { if(e.key==='Enter') sendMsg(); });
+document.getElementById('notifyInput').addEventListener('keydown', e => { if(e.key==='Enter') sendNotify(); });
+document.getElementById('ipInput').addEventListener('keydown', e => { if(e.key==='Enter') wsConnect(); });
+
+// ═══════════════════════════════════════════════════════════
+//  LOG
+// ═══════════════════════════════════════════════════════════
+function addLog(msg, type='sys') {
+  const box = document.getElementById('logBox');
+  const d = new Date();
+  const ts = [d.getHours(),d.getMinutes(),d.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');
+  const row = document.createElement('div');
+  row.className = 'log-entry';
+  row.innerHTML = `<span class="log-ts">[${ts}]</span><span class="log-${type}">${msg}</span>`;
+  box.appendChild(row);
+  // keep max 80 lines
+  while(box.children.length > 80) box.removeChild(box.firstChild);
+  box.scrollTop = box.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  LOCAL CLOCK (fallback when no WS data)
+// ═══════════════════════════════════════════════════════════
+setInterval(() => {
+  const d = new Date();
+  const t = String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  const el = document.getElementById('clockDisp');
+  // only update from local if WS hasn't sent time
+  if(el.textContent==='--:--') el.textContent = t;
+}, 1000);
+
+// ═══════════════════════════════════════════════════════════
+//  RESPONSIVE: collapse midRow on mobile
+// ═══════════════════════════════════════════════════════════
+function checkLayout() {
+  const mid = document.getElementById('midRow');
+  if(window.innerWidth < 600) {
+    mid.style.gridTemplateColumns = '1fr';
+  } else {
+    mid.style.gridTemplateColumns = '1fr 1fr';
+  }
+}
+window.addEventListener('resize', checkLayout);
+checkLayout();
+
+// ═══════════════════════════════════════════════════════════
+//  F1 STANDINGS — fetch directly from Jolpica in the browser
+//  No CORS issue: Jolpica sends Access-Control-Allow-Origin: *
+//  Tries current year first, falls back to previous year if empty
+// ═══════════════════════════════════════════════════════════
+let f1FetchInProgress = false;
+
+async function fetchF1Direct() {
+  if(f1FetchInProgress) return;
+  f1FetchInProgress = true;
+
+  const year = new Date().getFullYear();
+  document.getElementById('f1Loading').style.display = '';
+  document.getElementById('f1Podium').style.display  = 'none';
+  document.getElementById('f1Next').style.display    = 'none';
+  document.getElementById('f1Err').style.display     = 'none';
+
+  // try current year, fall back to previous if no data yet
+  const years = [year, year - 1];
+  let standings = null;
+  let usedYear  = year;
+
+  for(const y of years) {
+    try {
+      const r = await fetch(`https://api.jolpi.ca/ergast/f1/${y}/driverStandings.json`, {
+        signal: AbortSignal.timeout(8000)
+      });
+      if(!r.ok) continue;
+      const data = await r.json();
+      const lists = data?.MRData?.StandingsTable?.StandingsLists;
+      if(lists && lists.length > 0 && lists[0].DriverStandings?.length > 0) {
+        standings = lists[0].DriverStandings;
+        usedYear  = y;
+        break;
+      }
+    } catch(e) { /* try next year */ }
+  }
+
+  if(!standings) {
+    document.getElementById('f1Loading').style.display = 'none';
+    document.getElementById('f1Err').style.display     = '';
+    document.getElementById('f1Err').textContent       = 'Could not load standings — Jolpica may be down';
+    f1FetchInProgress = false;
+    return;
+  }
+
+  // update year badge
+  document.getElementById('f1Year').textContent = String(usedYear);
+
+  // fill positions 1-5
+  const ids = ['f1p1','f1p2','f1p3','f1p4','f1p5'];
+  const pts = ['f1p1pts','f1p2pts','f1p3pts','f1p4pts','f1p5pts'];
+  const tms = ['f1t1','f1t2','f1t3'];
+  standings.slice(0,5).forEach((s,i) => {
+    const code = s.Driver?.code || s.Driver?.familyName?.slice(0,3).toUpperCase() || '???';
+    const name = s.Driver?.givenName + ' ' + s.Driver?.familyName;
+    const team = s.Constructors?.[0]?.name || '';
+    const pt   = s.points || '0';
+    const el   = document.getElementById(ids[i]);
+    if(el) { el.textContent = code; el.title = name; }
+    const pe = document.getElementById(pts[i]);
+    if(pe) pe.textContent = pt;
+    if(i < 3) {
+      const te = document.getElementById(tms[i]);
+      if(te) te.textContent = team;
+    }
+  });
+
+  document.getElementById('f1Loading').style.display = 'none';
+  document.getElementById('f1Podium').style.display  = '';
+
+  // fetch next race separately
+  try {
+    const r2 = await fetch(`https://api.jolpi.ca/ergast/f1/${usedYear}/next.json`, {
+      signal: AbortSignal.timeout(6000)
+    });
+    if(r2.ok) {
+      const d2   = await r2.json();
+      const race = d2?.MRData?.RaceTable?.Races?.[0];
+      if(race) {
+        const name   = race.raceName || '---';
+        const date   = race.date || '';
+        const time   = race.time ? race.time.replace('Z','') : '00:00:00';
+        const raceTs = new Date(date + 'T' + time + 'Z');
+        const diffMs = raceTs - Date.now();
+        const diffD  = Math.floor(diffMs / 86400000);
+        const diffH  = Math.floor((diffMs % 86400000) / 3600000);
+        const nextEl = document.getElementById('f1Next');
+        if(diffMs > 0) {
+          nextEl.innerHTML = 'Next: <strong>' + name + '</strong> — ' + diffD + 'd ' + diffH + 'h';
+        } else {
+          nextEl.innerHTML = 'Next: <strong>' + name + '</strong>';
+        }
+        nextEl.style.display = '';
+      }
+    }
+  } catch(e) { /* next race is optional */ }
+
+  f1FetchInProgress = false;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  WEATHER — direct browser fetch from Open-Meteo (free, no key)
+//  Coords: Matara Sri Lanka — user can override via geo prompt
+// ═══════════════════════════════════════════════════════════
+const WX_LAT = '5.9496';
+const WX_LON = '80.5469';
+
+const WX_CODES = {
+  0:'Clear sky', 1:'Mainly clear', 2:'Partly cloudy', 3:'Overcast',
+  45:'Fog', 48:'Icy fog', 51:'Light drizzle', 53:'Drizzle', 55:'Heavy drizzle',
+  61:'Light rain', 63:'Rain', 65:'Heavy rain', 71:'Light snow', 73:'Snow',
+  75:'Heavy snow', 77:'Snow grains', 80:'Light showers', 81:'Showers',
+  82:'Violent showers', 85:'Snow showers', 86:'Heavy snow showers',
+  95:'Thunderstorm', 96:'Thunderstorm+hail', 99:'Heavy thunderstorm'
+};
+
+async function fetchWeatherDirect() {
+  document.getElementById('wxLoading').style.display = '';
+  document.getElementById('wxBody').style.display    = 'none';
+  document.getElementById('wxErr').style.display     = 'none';
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast`
+      + `?latitude=${WX_LAT}&longitude=${WX_LON}`
+      + `&current=temperature_2m,relative_humidity_2m,apparent_temperature,`
+      + `weather_code,wind_speed_10m`
+      + `&wind_speed_unit=kmh&timezone=auto`;
+    const r   = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const d   = await r.json();
+    const c   = d.current;
+    const temp  = c.temperature_2m;
+    const feel  = c.apparent_temperature;
+    const wind  = c.wind_speed_10m;
+    const hum   = c.relative_humidity_2m;
+    const code  = c.weather_code;
+    const desc  = WX_CODES[code] || 'Unknown';
+
+    document.getElementById('wxTemp').textContent  = temp.toFixed(1)+'°';
+    document.getElementById('wxDesc').textContent  = desc;
+    document.getElementById('wxWind').textContent  = wind.toFixed(0)+' km/h';
+    document.getElementById('wxFeel').textContent  = feel.toFixed(1)+'°';
+    document.getElementById('wxHum').textContent   = hum+'%';
+    document.getElementById('wxWBar').style.width  = Math.min(wind/60*100,100)+'%';
+    document.getElementById('wxBadge').textContent = desc;
+
+    document.getElementById('wxLoading').style.display = 'none';
+    document.getElementById('wxBody').style.display    = 'flex';
+  } catch(e) {
+    document.getElementById('wxLoading').style.display = 'none';
+    document.getElementById('wxErr').style.display     = '';
+    document.getElementById('wxErr').textContent       = 'Weather failed: '+e.message;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  F1 LIVE — f1dash.net WebSocket
+//  Sends real-time timing data during sessions
+// ═══════════════════════════════════════════════════════════
+let f1dashWs    = null;
+let f1dashRetry = null;
+let f1dashDriverMap = {};   // driverNumber -> {name, team, tla}
+
+function f1dashConnect() {
+  if(f1dashWs && f1dashWs.readyState < 2) return;
+
+  const dot = document.getElementById('f1wsDot');
+  const lbl = document.getElementById('f1wsStatus');
+  dot.className = 'ws-dot';
+  lbl.textContent = 'connecting...';
+
+  try {
+    f1dashWs = new WebSocket('wss://f1dash.net/ws');
+  } catch(e) {
+    lbl.textContent = 'error';
+    return;
+  }
+
+  f1dashWs.onopen = () => {
+    dot.className = 'ws-dot connected';
+    lbl.textContent = 'f1dash.net LIVE';
+    clearTimeout(f1dashRetry);
+    addLog('f1dash.net WS connected', 'out');
+  };
+
+  f1dashWs.onclose = () => {
+    dot.className = 'ws-dot';
+    lbl.textContent = 'reconnecting...';
+    addLog('f1dash.net WS closed — retrying in 8s', 'sys');
+    f1dashRetry = setTimeout(f1dashConnect, 8000);
+  };
+
+  f1dashWs.onerror = () => {
+    dot.className = 'ws-dot error';
+    lbl.textContent = 'f1dash error';
+  };
+
+  f1dashWs.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      handleF1Dash(msg);
+    } catch(ex) { /* ignore parse errors */ }
+  };
+}
+
+function handleF1Dash(msg) {
+  // f1dash.net sends different message types
+  // Common structure: { type, data } or direct timing arrays
+
+  const type = msg.type || msg.Type || msg.t || '';
+
+  // ── Driver list / session info ─────────────────────────
+  if(type === 'DriverList' || msg.DriverList) {
+    const list = msg.DriverList || msg.data || msg;
+    Object.entries(list).forEach(([num, info]) => {
+      if(typeof info === 'object' && info) {
+        f1dashDriverMap[num] = {
+          tla:  info.Tla  || info.tla  || num,
+          name: info.FullName || info.fullName || info.BroadcastName || num,
+          team: info.TeamName || info.teamName || ''
+        };
+      }
+    });
+  }
+
+  // ── Timing data ────────────────────────────────────────
+  if(type === 'TimingData' || msg.TimingData) {
+    const timing = msg.TimingData || msg.data || msg;
+    const lines  = timing.Lines || timing.lines || timing;
+    if(typeof lines !== 'object') return;
+
+    // build sorted position array
+    const drivers = [];
+    Object.entries(lines).forEach(([num, d]) => {
+      if(typeof d !== 'object' || !d) return;
+      const pos  = parseInt(d.Position || d.position || 99);
+      const gap  = d.GapToLeader  || d.gapToLeader  || '';
+      const intv = d.IntervalToPositionAhead?.Value || d.interval || '';
+      const info = f1dashDriverMap[num] || {};
+      drivers.push({ num, pos, gap, intv,
+        tla:  info.tla  || num,
+        name: info.name || num,
+        team: info.team || ''
+      });
+    });
+    drivers.sort((a,b) => a.pos - b.pos);
+    if(drivers.length > 0) renderF1LiveTable(drivers.slice(0,10));
+  }
+
+  // ── Session status ─────────────────────────────────────
+  if(type === 'SessionStatus' || msg.SessionStatus) {
+    const ss   = msg.SessionStatus || msg.data || {};
+    const stat = ss.Status || ss.status || '';
+    const badge = document.getElementById('f1liveBadge');
+    if(stat === 'Started' || stat === 'Active') {
+      badge.textContent = 'LIVE';
+      badge.className   = 'badge';
+    } else if(stat === 'Finished' || stat === 'Ends') {
+      badge.textContent = 'FINISHED';
+      badge.className   = 'badge yellow';
+    } else if(stat) {
+      badge.textContent = stat.toUpperCase();
+      badge.className   = 'badge red';
+    }
+  }
+
+  // ── Lap count ─────────────────────────────────────────
+  if(type === 'LapCount' || msg.LapCount) {
+    const lc    = msg.LapCount || msg.data || {};
+    const cur   = lc.CurrentLap  || lc.currentLap  || 0;
+    const total = lc.TotalLaps   || lc.totalLaps   || 0;
+    if(cur || total) {
+      document.getElementById('f1lLapTxt').textContent = 'LAP '+cur+'/'+total;
+      const pct = total ? Math.round(cur/total*100) : 0;
+      document.getElementById('f1lLapBar').style.width = pct+'%';
+      document.getElementById('f1lPct').textContent    = pct+'%';
+    }
+  }
+
+  // ── Safety car ────────────────────────────────────────
+  if(type === 'TrackStatus' || msg.TrackStatus) {
+    const ts  = msg.TrackStatus || msg.data || {};
+    const sc  = (ts.Status === '4' || ts.Status === '5' || ts.status === '4' || ts.status === '5');
+    document.getElementById('scBanner').classList.toggle('show', sc);
+    if(sc) {
+      document.getElementById('f1liveBadge').textContent = 'SC OUT';
+      document.getElementById('f1liveBadge').className   = 'badge yellow';
+    }
+  }
+
+  // ── Session info (circuit/name) ────────────────────────
+  if(type === 'SessionInfo' || msg.SessionInfo) {
+    const si   = msg.SessionInfo || msg.data || {};
+    const sess = si.Name || si.name || si.Type || si.type || '';
+    const circ = si.Meeting?.Circuit?.ShortName || si.circuit || si.Meeting?.Name || '';
+    if(sess) document.getElementById('f1lSess').textContent = sess;
+    if(circ) document.getElementById('f1lCirc').textContent = circ;
+  }
+
+  // ── Generic initial state dump (f1dash sends full state on connect) ──
+  // Try to find timing data anywhere in the message
+  if(!type && msg.Lines) { handleF1Dash({ type:'TimingData', data:msg }); }
+  if(!type && msg.DriverList) { handleF1Dash({ type:'DriverList', DriverList:msg.DriverList }); }
+}
+
+function renderF1LiveTable(drivers) {
+  const container = document.getElementById('f1LiveRows');
+  container.innerHTML = '';
+
+  // also update old P1/P2 elements for ESP32 forwarding
+  if(drivers[0]) document.getElementById('f1lSess');  // keep
+  document.getElementById('f1liveBadge').textContent = 'LIVE';
+  document.getElementById('f1liveBadge').className   = 'badge';
+
+  drivers.forEach((d, i) => {
+    const row = document.createElement('div');
+    row.style.cssText = `display:grid;grid-template-columns:24px 60px 1fr 70px 70px;gap:6px;
+      align-items:center;padding:5px 4px;border-radius:4px;
+      background:${i===0?'rgba(0,255,136,.06)':i%2===0?'rgba(255,255,255,.02)':'transparent'};
+      font-size:11px;`;
+
+    const posColor = i===0?'var(--yellow)':i===1?'var(--text)':i===2?'#cd7f32':'var(--text2)';
+    const gapText  = d.gap   ? String(d.gap).replace('+','').trim()   : (i===0?'LEADER':'---');
+    const intvText = d.intv  ? String(d.intv).replace('+','').trim()  : '---';
+
+    row.innerHTML =
+      `<span style="font-family:var(--display);font-size:16px;color:${posColor}">${i+1}</span>`+
+      `<span style="color:#fff;font-weight:500">${d.tla}</span>`+
+      `<span style="color:var(--text2);font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.team}</span>`+
+      `<span style="color:${i===0?'var(--green)':'var(--text2)'};font-size:10px">${i===0?'LEADER':'+'+gapText}</span>`+
+      `<span style="color:var(--cyan);font-size:10px">${i===0?'–':'+'+intvText}</span>`;
+    container.appendChild(row);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GO
+// ═══════════════════════════════════════════════════════════
+initUI();
+fetchF1Direct();                          // standings on load
+fetchWeatherDirect();                     // weather on load
+f1dashConnect();                          // f1 live WS on load
+setInterval(fetchF1Direct,    5*60*1000); // standings every 5min
+setInterval(fetchWeatherDirect,10*60*1000); // weather every 10min
+</script>
+</body>
+</html>
