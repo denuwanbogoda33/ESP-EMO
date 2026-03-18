@@ -1,0 +1,19 @@
+# Arduino build artifacts
+*.bin
+*.elf
+*.hex
+build/
+.arduino15/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# secrets — never commit real credentials
+secrets.h
